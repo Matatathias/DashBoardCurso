@@ -16,6 +16,7 @@ def converte_csv(df):
 ## MSG DE SUCESSO
 def mensagem_sucesso():
     sucesso = st.success('Arquivo baixado com sucesso!', icon='✅')
+    time.sleep(5)
     sucesso.empty()
 
 # TITULO DA PAGINA
