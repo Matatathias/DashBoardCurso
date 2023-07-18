@@ -3,6 +3,20 @@ from datetime import datetime as dt
 import streamlit as st
 import pandas as pd
 import requests
+import time
+
+# CACHEAR OS DADOS AO ABRIR A PAQUINA
+@st.cache_data
+
+# FUNCOES
+## CONVERTER DATAFRAME PARA ARQUIVO
+def converte_csv(df):
+    return df.to_csv(index=False).encode('utf-8')
+
+## MSG DE SUCESSO
+def mensagem_sucesso():
+    sucesso = st.success('Arquivo baixado com sucesso!', icon='✅')
+    sucesso.empty()
 
 # TITULO DA PAGINA
 st.title('DADOS BRUTOS')
@@ -66,51 +80,38 @@ with st.sidebar.expander('Quantidade de parcelas'):
     qtd_parcelas = st.slider('Selecione a quantidade de parcelas', 1, 24, (1,24))
 
 # APLICANDO OS FILTROS 
+## CRIA A QUERY PARA OS FILTROS
+query = '''
+    Produto in @produtos and \
+    `Categoria do Produto` in @categoria and \
+    @preco[0] <= Preço <= @preco[1] and \
+    @frete[0] <= Frete <= @frete[1] and \
+    @data_compra[0] <= `Data da Compra` <= @data_compra[1] and \
+    Vendedor in @vendedores and \
+    `Local da compra` in @local_compra and \
+    @avaliacao[0]<= `Avaliação da compra` <= @avaliacao[1] and \
+    `Tipo de pagamento` in @tipo_pagamento and \
+    @qtd_parcelas[0] <= `Quantidade de parcelas` <= @qtd_parcelas[1]
+'''
+
+## APLICA OS FILTROS DA QUERY
+dados_filtrado = dados.query(query)
+
 ## APLICA SELECAO DE COLUNAS
-if colunas:
-    dados = dados[colunas]
-
-## APLICA FILTRO DE PRODUTO
-if produtos:
-    dados = dados[dados['Produto'].isin(produtos)]
-
-## APLICA FILTRO DE CATEGORIA
-if categoria:
-    dados = dados[dados['Categoria do Produto'].isin(categoria)]
-
-## APLICA FILTRO DE PRECO
-if preco:
-    dados = dados[dados['Preço'].between(preco[0], preco[1])]
-
-## APLICA FILTRO DE FRETE
-if preco:
-    dados = dados[dados['Frete'].between(frete[0], frete[1])]
-
-## APLICA FILTRO DE DATA 
-if data_compra:
-    dt_ini = dt.strftime(data_compra[0], '%Y-%m-%d')
-    dt_fim = dt.strftime(data_compra[1], '%Y-%m-%d')
-    dados = dados[dados['Data da Compra'].between(dt_ini, dt_fim)]
-
-## APLICA FILTRO DE VENDEDOR
-if vendedores:
-    dados = dados[dados['Vendedor'].isin(vendedores)]
-
-## APLICA FILTRO DE LOCAL DA COMPRA 
-if local_compra:
-    dados = dados[dados['Local da compra'].isin(local_compra)]
-
-## APLICA FILTRO DE AVALIACAO DA COMPRA 
-if avaliacao:
-    dados = dados[dados['Avaliação da compra'].between(avaliacao[0], avaliacao[1])]
-
-## APLICA FILTRO DE TIPO DE PAGAMENTO
-if tipo_pagamento:
-    dados = dados[dados['Tipo de pagamento'].isin(tipo_pagamento)]
-
-## APLICA FILTRO DE QUANTIDADE DE PARCELAS
-if qtd_parcelas:
-    dados = dados[dados['Quantidade de parcelas'].between(qtd_parcelas[0], qtd_parcelas[1])]
+dados_filtrado = dados_filtrado[colunas]
 
 # APRESENTAR O DATAFRAME
-st.dataframe(dados)
+st.dataframe(dados_filtrado)
+
+# CRIA UM TEXTO FALANDO O NUMERO DE LINHAS E COLUNAS
+st.markdown(f'A tabela possui :blue[{dados_filtrado.shape[0]}] linhas e :blue[{dados_filtrado.shape[1]}] colunas')
+
+# BOTAO DE DOWNLOAD
+st.markdown('Escreva o nome do arquivo')
+coluna1, coluna2 = st.columns(2)
+
+with coluna1:
+    nome_arquivo = st.text_input('', label_visibility='collapsed', value='dados')
+    nome_arquivo += '.csv'
+with coluna2:
+    st.download_button('Fazer o download da tabela em csv', data=converte_csv(dados_filtrado), file_name=nome_arquivo, mime='text/csv', on_click=mensagem_sucesso)
